@@ -8,6 +8,6 @@ Single-file browser calculator for serial dilutions of cells, proteins, drugs or
 - **Direct** mode: every tube is made straight from the stock.
 - Visual scheme (tubes or wells) with transfer and diluent volumes, protocol table, copy/print, warnings for
   insufficient stock or pipetting volumes below your minimum.
-- Decimal comma or point; optional extra volume (%) so tubes don't run dry.
+- Decimal comma or point; "Pipetting reserve" tickbox (default 10 %) adds extra to every tube on top of what it gives out, so the series does not run dry.
 
 Open `index.html` in any browser, or use the GitHub Pages site. All data stays in the browser (localStorage).

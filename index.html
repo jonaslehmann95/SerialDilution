@@ -68,6 +68,7 @@ details.gen summary{cursor:pointer;font-size:13px;color:var(--muted);list-style:
 details.gen summary::-webkit-details-marker{display:none}
 details.gen[open] summary svg{transform:rotate(90deg)}
 .gen-body{margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.chk{display:flex;align-items:center;gap:6px}.chk input[type=checkbox]{width:16px;height:16px;margin:0;accent-color:#27272a;flex:none;cursor:pointer}.chk input[type=text]{width:56px}.chk input:disabled{color:#a1a1aa;background:var(--soft)}.chk span{color:var(--muted)}
 .empty{color:var(--muted);font-size:13px;padding:24px 0;text-align:center}
 footer{max-width:1200px;margin:0 auto;padding:0 24px 24px;color:var(--muted);font-size:12px}
 @media print{body{background:#fff}header,.col.inputs,.toolbar button,footer{display:none}main{grid-template-columns:1fr;padding:0}.panel{border:0;padding:0 0 16px}}
@@ -124,7 +125,7 @@ footer{max-width:1200px;margin:0 auto;padding:0 24px 24px;color:var(--muted);fon
         <div class="seg" id="modeSeg"><button data-v="serial">Serial</button><button data-v="direct">Direct from stock</button></div>
       </div>
       <div class="grid3">
-        <div><label>Extra volume (%)</label><input type="text" id="overage" inputmode="decimal" value="0"></div>
+        <div><label>Pipetting reserve</label><div class="chk"><input type="checkbox" id="reserveOn"><input type="text" id="reservePct" inputmode="decimal"><span>%</span></div></div>
         <div><label>Min. pipette (µL)</label><input type="text" id="minPip" inputmode="decimal" value="1"></div>
         <div><label>Diluent name</label><input type="text" id="diluent" value="Diluent"></div>
       </div>
@@ -133,7 +134,7 @@ footer{max-width:1200px;margin:0 auto;padding:0 24px 24px;color:var(--muted);fon
         <div><label>Volumes in</label><select id="volOut"><option value="auto">auto</option><option value="µL">µL</option><option value="mL">mL</option></select></div>
         <div><label>Decimal</label><select id="decSep"><option value=".">1.5</option><option value=",">1,5</option></select></div>
       </div>
-      <div class="hint">Extra volume is added to every target so you do not run dry (e.g. 10&nbsp;%).</div>
+      <div class="hint">Pipetting reserve: every tube is made with this much extra on top of what it has to give out (your volume and the volume passed on), so you do not run dry along the series.</div>
     </section>
   </div>
 
@@ -220,7 +221,7 @@ function fmtVol(uL){
 const DEFAULT = {
   stock:{c:'10', u:'mg/mL', v:'100', vu:'µL'},
   rows:[{c:'1000',u:'µg/mL',v:'200',vu:'µL'},{c:'100',u:'µg/mL',v:'200',vu:'µL'},{c:'10',u:'µg/mL',v:'200',vu:'µL'},{c:'1',u:'µg/mL',v:'200',vu:'µL'}],
-  mode:'serial', shape:'tube', overage:'0', minPip:'1', diluent:'Diluent', volOut:'auto', decSep:'.',
+  mode:'serial', shape:'tube', reserveOn:true, reservePct:'10', minPip:'1', diluent:'Diluent', volOut:'auto', decSep:'.',
   gen:{start:'', u:'µg/mL', factor:'2', steps:'8', v:'200', vu:'µL'}
 };
 let S;
@@ -274,7 +275,7 @@ function compute(){
   if (!(stockC > 0)) errors.push('Enter a valid stock concentration.');
   const stockV = stockVin > 0 ? stockVin * VOL[S.stock.vu] : NaN;
   if (!(stockV > 0)) warns.push('No stock volume given – cannot check whether enough stock is available.');
-  const over = Math.max(0, parseNum(S.overage) || 0);
+  const over = S.reserveOn ? Math.max(0, parseNum(S.reservePct) || 0) : 0;
   const minPip = parseNum(S.minPip) || 0;
   const stockBase = toBase(stockC, stockU);
 
@@ -299,19 +300,18 @@ function compute(){
   if (merged.some(m => m.merged)) warns.push('Targets with identical concentration were combined into one tube.');
   const n = merged.length;
   const f = 1 + over/100;
-  merged.forEach(m => { m.need = m.needRaw * f; });
   if (S.mode === 'serial'){
     for (let i = n-1; i >= 0; i--){
       const m = merged[i];
       m.transferOut = i < n-1 ? merged[i+1].transferIn : 0;
-      m.total = m.need + m.transferOut;
+      m.total = (m.needRaw + m.transferOut) * f;
       const fromC = i === 0 ? stockBase : merged[i-1].c;
       m.transferIn = m.total * m.c / fromC;
       m.factor = fromC / m.c;
       m.from = i === 0 ? 'stock' : i-1;
     }
   } else {
-    merged.forEach(m => { m.transferOut = 0; m.total = m.need; m.transferIn = m.total * m.c / stockBase; m.factor = stockBase / m.c; m.from = 'stock'; });
+    merged.forEach(m => { m.transferOut = 0; m.total = m.needRaw * f; m.transferIn = m.total * m.c / stockBase; m.factor = stockBase / m.c; m.from = 'stock'; });
   }
   merged.forEach(m => { m.diluent = Math.max(0, m.total - m.transferIn); m.spare = m.total - m.needRaw - m.transferOut; });
   const stockUsed = S.mode === 'serial' ? (n ? merged[0].transferIn : 0) : merged.reduce((a,m) => a + m.transferIn, 0);
@@ -428,7 +428,7 @@ function renderProto(R){
 }
 function protoText(R){
   const dil = S.diluent || 'Diluent';
-  const lines = [`Serial dilution – stock ${fmtConc(R.stockBase, R.stockU)}${R.stockV > 0 ? `, ${fmtVol(R.stockV)} available` : ''}`, `Mode: ${S.mode === 'serial' ? 'serial (each from previous tube)' : 'direct (each from stock)'}${R.over ? `, +${fmtNum(R.over)}% extra` : ''}`, ''];
+  const lines = [`Serial dilution – stock ${fmtConc(R.stockBase, R.stockU)}${R.stockV > 0 ? `, ${fmtVol(R.stockV)} available` : ''}`, `Mode: ${S.mode === 'serial' ? 'serial (each from previous tube)' : 'direct (each from stock)'}${R.over ? `, +${fmtNum(R.over)}% pipetting reserve per tube` : ''}`, ''];
   R.items.forEach((m, i) => {
     const from = m.from === 'stock' ? 'stock' : `tube ${m.from+1}`;
     lines.push(`Tube ${i+1}: ${fmtConc(m.c, m.unit)} – take ${fmtVol(m.transferIn)} from ${from} + ${fmtVol(m.diluent)} ${dil} = ${fmtVol(m.total)} (1:${fmtNum(m.factor)})${m.transferOut > 0 ? `; pass on ${fmtVol(m.transferOut)} to tube ${i+2}` : ''}`);
@@ -456,7 +456,7 @@ function update(){
   const sc = parseNum(S.stock.c);
   $('stockHint').textContent = sc > 0 ? `= ${fmtConc(toBase(sc, S.stock.u), S.stock.u)}${familyOf(S.stock.u) === 'cells' ? ` (${fmtNum(sc, 3, Infinity)} ${S.stock.u})` : ''}` : '';
   $('rows').querySelectorAll('tr').forEach((tr, i) => tr.querySelectorAll('input').forEach(el => el.classList.toggle('bad', R.rowBad.has(i))));
-  $('schemeHint').textContent = S.mode === 'serial' ? 'highest → lowest, each tube feeds the next' : 'every tube made directly from stock';
+  $('schemeHint').textContent = (S.mode === 'serial' ? 'highest → lowest, each tube feeds the next' : 'every tube made directly from stock') + (R.over ? ` · +${fmtNum(R.over)}% reserve per tube` : '');
   renderMsgs(R); renderViz(R); renderProto(R);
 }
 
@@ -475,7 +475,10 @@ $('stockU').addEventListener('change', () => {
   if (familyOf(S.stock.u) !== old){ S.rows.forEach(r => r.u = S.stock.u); S.gen.u = S.stock.u; fillUnits($('genU'), null, S.gen.u); renderRows(); }
   save(); update();
 });
-bind('overage', () => S.overage, v => S.overage = v);
+bind('reservePct', () => S.reservePct, v => S.reservePct = v);
+const paintReserve = () => { $('reserveOn').checked = !!S.reserveOn; $('reservePct').disabled = !S.reserveOn; };
+$('reserveOn').addEventListener('change', () => { S.reserveOn = $('reserveOn').checked; paintReserve(); save(); update(); });
+paintReserve();
 bind('minPip', () => S.minPip, v => S.minPip = v);
 bind('diluent', () => S.diluent, v => S.diluent = v);
 bind('volOut', () => S.volOut, v => S.volOut = v);

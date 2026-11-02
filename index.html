@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Serial Dilution Calculator</title>
+<style>
+:root{--text:#18181b;--muted:#71717a;--line:#e4e4e7;--bg:#f7f7f6;--panel:#ffffff;--dark:#27272a;--soft:#f4f4f5;--warn:#b45309;--warnbg:#fffbeb;--warnline:#fcd34d;--err:#b91c1c;--errbg:#fef2f2;--errline:#fca5a5}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.45}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:18px 24px 0;max-width:1200px;margin:0 auto}
+h1{font-size:18px;font-weight:600;margin:0;letter-spacing:-.01em}
+h2{font-size:13px;font-weight:600;margin:0 0 12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+main{max-width:1240px;margin:0 auto;padding:16px 24px 48px;display:grid;grid-template-columns:430px 1fr;gap:16px;align-items:start}
+@media (max-width:900px){main{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+input,select,button{font:inherit;color:inherit}
+input[type=text],input[type=number],select{height:32px;border:1px solid var(--line);border-radius:6px;padding:0 8px;background:#fff;width:100%;min-width:0}
+input:focus,select:focus{outline:2px solid var(--dark);outline-offset:-1px}
+input.bad{border-color:var(--errline);background:var(--errbg)}
+.field{display:grid;grid-template-columns:1fr auto;gap:6px}
+.field select{width:auto;max-width:110px}
+.grid2{display:grid;grid-template-columns:1.25fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.hint{font-size:12px;color:var(--muted);margin-top:4px}
+button{height:32px;border:1px solid var(--line);background:#fff;border-radius:6px;padding:0 12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+button:hover{background:var(--soft)}
+button.primary{background:var(--dark);color:#fff;border-color:var(--dark)}
+button.primary:hover{background:#000}
+button.icon{width:32px;padding:0;justify-content:center;color:var(--muted)}
+button.icon:hover{color:var(--text)}
+svg.i{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;border-radius:0;height:30px;background:#fff}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on{background:var(--dark);color:#fff}
+table.targets{width:100%;border-collapse:collapse}
+table.targets th{font-size:12px;color:var(--muted);font-weight:500;text-align:left;padding:0 4px 6px}
+table.targets td{padding:3px 2px;vertical-align:middle}
+table.targets td:first-child{color:var(--muted);font-size:12px;width:22px;text-align:right;padding-right:6px}
+table.targets .u{width:92px}
+table.targets .vu{width:64px}
+.row-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.msgs{display:flex;flex-direction:column;gap:6px}
+.msg{border:1px solid var(--warnline);background:var(--warnbg);color:var(--warn);border-radius:6px;padding:8px 10px;font-size:13px;display:flex;gap:8px;align-items:flex-start}
+.msg.err{border-color:var(--errline);background:var(--errbg);color:var(--err)}
+.msg svg.i{flex:none;margin-top:1px}
+.viz{overflow-x:auto;padding-bottom:4px}
+.viz svg{display:block;font-family:inherit}
+.viz text{fill:var(--text);font-size:11px}
+.viz text.m{fill:var(--muted)}
+.viz text.b{font-weight:600;font-size:12px}
+table.proto{width:100%;border-collapse:collapse;font-size:13px}
+table.proto th{text-align:left;font-weight:500;color:var(--muted);font-size:12px;border-bottom:1px solid var(--line);padding:6px 8px;white-space:nowrap}
+table.proto td{padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.proto tr:last-child td{border-bottom:0}
+table.proto td.num{font-variant-numeric:tabular-nums}
+.summary{display:flex;gap:24px;flex-wrap:wrap;margin-bottom:12px}
+.summary div{font-size:13px}
+.summary b{display:block;font-weight:600;font-size:15px}
+.summary span{color:var(--muted);font-size:12px}
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.toolbar h2{margin:0}
+details.gen{border-top:1px solid var(--line);margin-top:12px;padding-top:10px}
+details.gen summary{cursor:pointer;font-size:13px;color:var(--muted);list-style:none;display:flex;align-items:center;gap:6px}
+details.gen summary::-webkit-details-marker{display:none}
+details.gen[open] summary svg{transform:rotate(90deg)}
+.gen-body{margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.empty{color:var(--muted);font-size:13px;padding:24px 0;text-align:center}
+footer{max-width:1200px;margin:0 auto;padding:0 24px 24px;color:var(--muted);font-size:12px}
+@media print{body{background:#fff}header,.col.inputs,.toolbar button,footer{display:none}main{grid-template-columns:1fr;padding:0}.panel{border:0;padding:0 0 16px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Serial Dilution Calculator</h1>
+  <div class="hint">Accepts decimal comma and cell notation like <code>1,5x10^6</code></div>
+</header>
+<main>
+  <div class="col inputs">
+    <section class="panel">
+      <h2>Stock</h2>
+      <div class="grid2">
+        <div>
+          <label>Concentration</label>
+          <div class="field"><input type="text" id="stockC" inputmode="decimal" placeholder="e.g. 1,5x10^6"><select id="stockU"></select></div>
+        </div>
+        <div>
+          <label>Volume available</label>
+          <div class="field"><input type="text" id="stockV" inputmode="decimal"><select id="stockVU"><option>µL</option><option>mL</option></select></div>
+        </div>
+      </div>
+      <div class="hint" id="stockHint"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Targets</h2>
+      <table class="targets">
+        <thead><tr><th></th><th>Concentration</th><th class="u"></th><th>Volume needed</th><th class="vu"></th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="row-actions">
+        <button id="addRow"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add target</button>
+        <button id="clearRows">Clear</button>
+      </div>
+      <details class="gen">
+        <summary><svg class="i" viewBox="0 0 24 24" style="transition:transform .15s"><path d="M9 6l6 6-6 6"/></svg>Generate a series (start, factor, steps)</summary>
+        <div class="gen-body">
+          <div><label>Start concentration</label><div class="field"><input type="text" id="genStart" inputmode="decimal"><select id="genU"></select></div></div>
+          <div><label>Dilution factor</label><input type="text" id="genFactor" inputmode="decimal" value="2"></div>
+          <div><label>Number of steps</label><input type="text" id="genSteps" inputmode="numeric" value="8"></div>
+          <div><label>Volume per target</label><div class="field"><input type="text" id="genVol" inputmode="decimal" value="200"><select id="genVU"><option>µL</option><option>mL</option></select></div></div>
+          <div style="grid-column:1/-1;display:flex;gap:8px"><button class="primary" id="genReplace">Replace targets</button><button id="genAppend">Append</button></div>
+        </div>
+      </details>
+    </section>
+
+    <section class="panel">
+      <h2>Options</h2>
+      <div style="margin-bottom:10px">
+        <label>Mode</label>
+        <div class="seg" id="modeSeg"><button data-v="serial">Serial</button><button data-v="direct">Direct from stock</button></div>
+      </div>
+      <div class="grid3">
+        <div><label>Extra volume (%)</label><input type="text" id="overage" inputmode="decimal" value="0"></div>
+        <div><label>Min. pipette (µL)</label><input type="text" id="minPip" inputmode="decimal" value="1"></div>
+        <div><label>Diluent name</label><input type="text" id="diluent" value="Diluent"></div>
+      </div>
+      <div class="grid3" style="margin-top:10px">
+        <div><label>Visual</label><div class="seg" id="shapeSeg"><button data-v="tube">Tubes</button><button data-v="well">Wells</button></div></div>
+        <div><label>Volumes in</label><select id="volOut"><option value="auto">auto</option><option value="µL">µL</option><option value="mL">mL</option></select></div>
+        <div><label>Decimal</label><select id="decSep"><option value=".">1.5</option><option value=",">1,5</option></select></div>
+      </div>
+      <div class="hint">Extra volume is added to every target so you do not run dry (e.g. 10&nbsp;%).</div>
+    </section>
+  </div>
+
+  <div class="col">
+    <section class="panel" id="msgPanel" style="display:none"><div class="msgs" id="msgs"></div></section>
+    <section class="panel">
+      <div class="toolbar"><h2>Scheme</h2><div class="hint" id="schemeHint"></div></div>
+      <div class="viz" id="viz"></div>
+    </section>
+    <section class="panel">
+      <div class="toolbar"><h2>Protocol</h2><div style="display:flex;gap:8px"><button id="copyBtn"><svg class="i" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a1 1 0 0 1 1-1h10"/></svg>Copy</button><button onclick="window.print()"><svg class="i" viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2M6 15h12v6H6z"/></svg>Print</button></div></div>
+      <div class="summary" id="summary"></div>
+      <div style="overflow-x:auto" id="proto"></div>
+    </section>
+  </div>
+</main>
+<footer>Everything runs in your browser; inputs are saved locally. In serial mode tubes are prepared from the highest to the lowest concentration; each tube is made large enough to supply the next one.</footer>
+
+<script>
+(() => {
+'use strict';
+// ---------- units ----------
+const FAMILIES = {
+  mass:     {label:'Mass / volume', units:{'pg/mL':1e-3,'ng/mL':1,'µg/mL':1e3,'mg/mL':1e6,'g/L':1e6,'ng/µL':1e3,'µg/µL':1e6}},
+  molar:    {label:'Molar',         units:{'pM':1e-3,'nM':1,'µM':1e3,'mM':1e6,'M':1e9}},
+  cells:    {label:'Cells',         units:{'cells/mL':1,'cells/µL':1e3}},
+  activity: {label:'Activity',      units:{'mU/mL':1e-3,'U/mL':1,'kU/mL':1e3}},
+  percent:  {label:'Percent',       units:{'%':1}},
+  fold:     {label:'Fold',          units:{'x':1}},
+  other:    {label:'Other',         units:{'units/mL':1,'µg':1,'mg':1}}
+};
+const VOL = {'µL':1,'mL':1000};
+const familyOf = u => Object.keys(FAMILIES).find(f => u in FAMILIES[f].units) || 'other';
+const toBase = (v,u) => v * FAMILIES[familyOf(u)].units[u];
+const fromBase = (v,u) => v / FAMILIES[familyOf(u)].units[u];
+
+// ---------- parsing / formatting ----------
+const SUP = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+function parseNum(s){
+  if (s == null) return NaN;
+  s = String(s).trim().replace(/\s+/g,'');
+  if (!s) return NaN;
+  s = s.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹⁻]+/g, run => '^' + [...run].map(c => c === '⁻' ? '-' : SUP.indexOf(c)).join(''));
+  if (s.includes(',') && !s.includes('.') && (s.match(/,/g)||[]).length === 1) s = s.replace(',', '.');
+  else s = s.replace(/,/g, '');
+  s = s.replace(/[·∙]/g, '*');
+  const m = s.match(/^([-+]?(?:\d+\.?\d*|\.\d+))?(?:[x×*]?10\^?([-+]?\d+)|e([-+]?\d+))?$/i);
+  if (!m || (m[1] == null && m[2] == null)) return NaN;
+  const mant = m[1] == null ? 1 : parseFloat(m[1]);
+  const exp = m[2] != null ? +m[2] : m[3] != null ? +m[3] : 0;
+  return mant * Math.pow(10, exp);
+}
+let decSep = '.';
+const dec = s => decSep === ',' ? s.replace('.', ',') : s;
+const sup = n => String(n).split('').map(c => c === '-' ? '⁻' : SUP[+c]).join('');
+const strip = s => s.includes('.') ? s.replace(/\.?0+$/, '') : s;
+function fmtSci(x, sig=3){
+  if (x === 0) return '0';
+  let e = Math.floor(Math.log10(Math.abs(x)));
+  let m = +(x / 10**e).toPrecision(sig);
+  if (Math.abs(m) >= 10) { m /= 10; e += 1; }
+  return dec(strip(m.toFixed(sig-1))) + ' × 10' + sup(e);
+}
+function fmtNum(x, sig=3, sciAbove=1e5){
+  if (!isFinite(x)) return '–';
+  if (x === 0) return '0';
+  const a = Math.abs(x);
+  if (a >= sciAbove || a < 1e-3) return fmtSci(x, sig);
+  const d = Math.max(0, sig - 1 - Math.floor(Math.log10(a)));
+  return dec(strip(x.toFixed(Math.min(d, 8))));
+}
+function fmtConc(base, unit){
+  const v = fromBase(base, unit);
+  return (familyOf(unit) === 'cells' ? fmtNum(v, 4, 1e4) : fmtNum(v, 3)) + ' ' + unit;
+}
+let volOut = 'auto';
+function fmtVol(uL){
+  if (!isFinite(uL)) return '–';
+  const useML = volOut === 'mL' || (volOut === 'auto' && Math.abs(uL) >= 1000);
+  return useML ? fmtNum(uL/1000, 4) + ' mL' : fmtNum(uL, 4) + ' µL';
+}
+
+// ---------- state ----------
+const DEFAULT = {
+  stock:{c:'10', u:'mg/mL', v:'100', vu:'µL'},
+  rows:[{c:'1000',u:'µg/mL',v:'200',vu:'µL'},{c:'100',u:'µg/mL',v:'200',vu:'µL'},{c:'10',u:'µg/mL',v:'200',vu:'µL'},{c:'1',u:'µg/mL',v:'200',vu:'µL'}],
+  mode:'serial', shape:'tube', overage:'0', minPip:'1', diluent:'Diluent', volOut:'auto', decSep:'.',
+  gen:{start:'', u:'µg/mL', factor:'2', steps:'8', v:'200', vu:'µL'}
+};
+let S;
+try { S = Object.assign({}, DEFAULT, JSON.parse(localStorage.getItem('sdc.state') || 'null') || {}); } catch(e){ S = {...DEFAULT}; }
+S.gen = Object.assign({}, DEFAULT.gen, S.gen || {});
+const save = () => localStorage.setItem('sdc.state', JSON.stringify(S));
+const $ = id => document.getElementById(id);
+
+// ---------- unit selects ----------
+function fillUnits(sel, family, value){
+  sel.innerHTML = '';
+  const fams = family ? [family] : Object.keys(FAMILIES);
+  for (const f of fams){
+    const g = document.createElement('optgroup'); g.label = FAMILIES[f].label;
+    for (const u of Object.keys(FAMILIES[f].units)){ const o = document.createElement('option'); o.value = o.textContent = u; g.appendChild(o); }
+    sel.appendChild(g);
+  }
+  if (value && [...sel.options].some(o => o.value === value)) sel.value = value;
+}
+
+// ---------- targets table ----------
+const SVG_X = '<svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+function renderRows(){
+  const tb = $('rows'); tb.innerHTML = '';
+  const fam = familyOf(S.stock.u);
+  S.rows.forEach((r, i) => {
+    if (familyOf(r.u) !== fam) r.u = S.stock.u;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${i+1}</td><td><input type="text" inputmode="decimal" data-k="c" value="${esc(r.c)}"></td><td class="u"><select data-k="u"></select></td><td><input type="text" inputmode="decimal" data-k="v" value="${esc(r.v)}"></td><td class="vu"><select data-k="vu"><option>µL</option><option>mL</option></select></td><td><button class="icon" title="Remove" data-rm>${SVG_X}</button></td>`;
+    fillUnits(tr.querySelector('[data-k=u]'), fam, r.u);
+    tr.querySelector('[data-k=vu]').value = r.vu;
+    tr.querySelectorAll('input,select').forEach(el => el.addEventListener('input', () => { r[el.dataset.k] = el.value; save(); update(); }));
+    tr.querySelector('[data-rm]').addEventListener('click', () => { S.rows.splice(i,1); save(); renderRows(); update(); });
+    tr.querySelectorAll('input').forEach(el => el.addEventListener('keydown', e => { if (e.key === 'Enter' && i === S.rows.length-1 && el.dataset.k === 'v') addRow(); }));
+    tb.appendChild(tr);
+  });
+}
+const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+function addRow(){
+  const last = S.rows[S.rows.length-1];
+  S.rows.push({c:'', u:last ? last.u : S.stock.u, v:last ? last.v : '200', vu:last ? last.vu : 'µL'});
+  save(); renderRows(); update();
+  const inputs = $('rows').querySelectorAll('[data-k=c]'); inputs[inputs.length-1].focus();
+}
+
+// ---------- calculation ----------
+function compute(){
+  const errors = [], warns = [], rowBad = new Set();
+  const stockC = parseNum(S.stock.c), stockVin = parseNum(S.stock.v);
+  const stockU = S.stock.u;
+  if (!(stockC > 0)) errors.push('Enter a valid stock concentration.');
+  const stockV = stockVin > 0 ? stockVin * VOL[S.stock.vu] : NaN;
+  if (!(stockV > 0)) warns.push('No stock volume given – cannot check whether enough stock is available.');
+  const over = Math.max(0, parseNum(S.overage) || 0);
+  const minPip = parseNum(S.minPip) || 0;
+  const stockBase = toBase(stockC, stockU);
+
+  let items = [];
+  S.rows.forEach((r, i) => {
+    const c = parseNum(r.c), v = parseNum(r.v);
+    if (r.c.trim() === '' && r.v.trim() === '') return;
+    if (!(c > 0) || !(v > 0)) { rowBad.add(i); return; }
+    const base = toBase(c, r.u);
+    if (stockC > 0 && base > stockBase * (1 + 1e-12)) { rowBad.add(i); errors.push(`Target ${i+1} (${fmtConc(base, r.u)}) is more concentrated than the stock.`); return; }
+    items.push({idx:i, c:base, unit:r.u, needRaw:v*VOL[r.vu], volUnit:r.vu});
+  });
+  if (rowBad.size && !errors.length) errors.push('Some targets are incomplete or invalid (marked).');
+  items.sort((a,b) => b.c - a.c);
+  // merge equal concentrations
+  const merged = [];
+  for (const it of items){
+    const last = merged[merged.length-1];
+    if (last && Math.abs(last.c - it.c) <= last.c * 1e-9){ last.needRaw += it.needRaw; last.merged = (last.merged||[last.idx]).concat(it.idx); }
+    else merged.push({...it});
+  }
+  if (merged.some(m => m.merged)) warns.push('Targets with identical concentration were combined into one tube.');
+  const n = merged.length;
+  const f = 1 + over/100;
+  merged.forEach(m => { m.need = m.needRaw * f; });
+  if (S.mode === 'serial'){
+    for (let i = n-1; i >= 0; i--){
+      const m = merged[i];
+      m.transferOut = i < n-1 ? merged[i+1].transferIn : 0;
+      m.total = m.need + m.transferOut;
+      const fromC = i === 0 ? stockBase : merged[i-1].c;
+      m.transferIn = m.total * m.c / fromC;
+      m.factor = fromC / m.c;
+      m.from = i === 0 ? 'stock' : i-1;
+    }
+  } else {
+    merged.forEach(m => { m.transferOut = 0; m.total = m.need; m.transferIn = m.total * m.c / stockBase; m.factor = stockBase / m.c; m.from = 'stock'; });
+  }
+  merged.forEach(m => { m.diluent = Math.max(0, m.total - m.transferIn); m.spare = m.total - m.needRaw - m.transferOut; });
+  const stockUsed = S.mode === 'serial' ? (n ? merged[0].transferIn : 0) : merged.reduce((a,m) => a + m.transferIn, 0);
+  if (n && stockV > 0 && stockUsed > stockV * (1 + 1e-9)) errors.push(`Not enough stock: ${fmtVol(stockUsed)} needed but only ${fmtVol(stockV)} available.`);
+  merged.forEach((m, i) => {
+    const name = `Tube ${i+1} (${fmtConc(m.c, m.unit)})`;
+    if (minPip > 0 && m.transferIn < minPip) warns.push(`${name}: transfer of ${fmtVol(m.transferIn)} is below ${fmtVol(minPip)}. Increase the volume or add an intermediate dilution.`);
+    if (minPip > 0 && m.diluent > 0 && m.diluent < minPip) warns.push(`${name}: ${S.diluent || 'diluent'} volume ${fmtVol(m.diluent)} is very small.`);
+    if (m.factor > 1 && m.factor < 1.05) warns.push(`${name}: dilution factor ${fmtNum(m.factor)} is very close to 1.`);
+  });
+  if (S.mode === 'serial' && n > 1){
+    const bigFactor = merged.some(m => m.factor > 1000);
+    if (bigFactor) warns.push('A single step dilutes more than 1:1000 – consider an intermediate step for accuracy.');
+  }
+  return {errors, warns, rowBad, items:merged, stockBase, stockU, stockV, stockUsed, over};
+}
+
+// ---------- visual ----------
+function shade(c, R){
+  if (!(R.items.length) || R.stockBase <= 0) return 0.9;
+  const cmin = Math.min(...R.items.map(m => m.c));
+  if (cmin >= R.stockBase) return 0.9;
+  const r = Math.log(c / cmin) / Math.log(R.stockBase / cmin);
+  return 0.10 + 0.80 * Math.max(0, Math.min(1, r));
+}
+function renderViz(R){
+  const n = R.items.length;
+  const viz = $('viz');
+  if (!n){ viz.innerHTML = '<div class="empty">Add at least one target to see the scheme.</div>'; return; }
+  const COL = 160, LEFT = 44, TOP = 68, H = 330;
+  const tubeW = 56, tubeH = 130, shape = S.shape;
+  const W = LEFT*2 + COL*(n+1) - (COL - tubeW);
+  const maxTotal = Math.max(...R.items.map(m => m.total));
+  const dil = esc(S.diluent || 'Diluent');
+  let s = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`;
+  s += `<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#71717a"/></marker></defs>`;
+  const tubeAt = (x, level, op, idLabel, title, sub, cx) => {
+    // level 0..1 fill fraction
+    const y = TOP;
+    let out = '';
+    if (shape === 'tube'){
+      const bodyH = tubeH - 22, cone = 22;
+      const path = `M${x},${y} H${x+tubeW} V${y+bodyH} L${x+tubeW/2},${y+tubeH} L${x},${y+bodyH} Z`;
+      const fy = y + tubeH * (1 - level);
+      out += `<clipPath id="${idLabel}"><path d="${path}"/></clipPath>`;
+      out += `<rect x="${x}" y="${fy}" width="${tubeW}" height="${y+tubeH-fy}" fill="#27272a" fill-opacity="${op.toFixed(3)}" clip-path="url(#${idLabel})"/>`;
+      out += `<path d="${path}" fill="none" stroke="#a1a1aa" stroke-width="1.5"/>`;
+      out += `<rect x="${x-4}" y="${y-8}" width="${tubeW+8}" height="8" rx="2" fill="#fff" stroke="#a1a1aa" stroke-width="1.5"/>`;
+    } else {
+      const r = 34, cy = y + tubeH/2;
+      out += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#27272a" fill-opacity="${op.toFixed(3)}"/>`;
+      out += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#a1a1aa" stroke-width="1.5"/>`;
+    }
+    out += `<text x="${cx}" y="${y-18}" text-anchor="middle" class="b">${title}</text>`;
+    out += `<text x="${cx}" y="${y-32}" text-anchor="middle" class="m">${sub}</text>`;
+    return out;
+  };
+  // stock
+  const sx = LEFT, scx = sx + tubeW/2;
+  s += tubeAt(sx, 0.85, shade(R.stockBase, R), 'clipS', esc(fmtConc(R.stockBase, R.stockU)), 'Stock', scx);
+  let ty = TOP + tubeH + 18;
+  s += `<text x="${scx}" y="${ty}" text-anchor="middle" class="m">use ${esc(fmtVol(R.stockUsed))}</text>`;
+  if (R.stockV > 0) s += `<text x="${scx}" y="${ty+14}" text-anchor="middle" class="m">of ${esc(fmtVol(R.stockV))}</text>`;
+  R.items.forEach((m, i) => {
+    const x = LEFT + COL*(i+1), cx = x + tubeW/2;
+    const level = 0.15 + 0.7 * (m.total / maxTotal);
+    s += tubeAt(x, level, shade(m.c, R), 'clip'+i, esc(fmtConc(m.c, m.unit)), `Tube ${i+1} · 1:${esc(fmtNum(m.factor))}`, cx);
+    // transfer arrow from source
+    const ay = TOP + tubeH * 0.55;
+    if (S.mode === 'serial'){
+      const fromCx = i === 0 ? scx : LEFT + COL*i + tubeW/2;
+      const x1 = fromCx + tubeW/2 + 4, x2 = x - 6;
+      s += `<line x1="${x1}" y1="${ay}" x2="${x2}" y2="${ay}" stroke="#71717a" stroke-width="1.3" marker-end="url(#arr)"/>`;
+      s += `<text x="${(x1+x2)/2}" y="${ay-6}" text-anchor="middle">${esc(fmtVol(m.transferIn))}</text>`;
+      if (m.diluent > 0) s += `<text x="${cx}" y="${TOP-44}" text-anchor="middle" class="m">+ ${esc(fmtVol(m.diluent))} ${dil}</text>`;
+    } else {
+      s += `<text x="${cx}" y="${TOP-56}" text-anchor="middle">${esc(fmtVol(m.transferIn))} stock</text>`;
+      if (m.diluent > 0) s += `<text x="${cx}" y="${TOP-44}" text-anchor="middle" class="m">+ ${esc(fmtVol(m.diluent))} ${dil}</text>`;
+      if (i === 0){
+        const x1 = scx + tubeW/2 + 4, x2 = x - 6;
+        s += `<line x1="${x1}" y1="${ay}" x2="${x2}" y2="${ay}" stroke="#71717a" stroke-width="1.3" stroke-dasharray="3 3"/>`;
+        s += `<text x="${(x1+x2)/2}" y="${ay-6}" text-anchor="middle" class="m">each from stock</text>`;
+      }
+    }
+    // below
+    const y = TOP + tubeH + 18;
+    s += `<text x="${cx}" y="${y}" text-anchor="middle">total ${esc(fmtVol(m.total))}</text>`;
+    s += `<text x="${cx}" y="${y+14}" text-anchor="middle" class="m">use ${esc(fmtVol(m.needRaw))}</text>`;
+    let yy = y + 28;
+    if (m.transferOut > 0){ s += `<text x="${cx}" y="${yy}" text-anchor="middle" class="m">pass on ${esc(fmtVol(m.transferOut))}</text>`; yy += 14; }
+    if (m.spare > 1e-9) s += `<text x="${cx}" y="${yy}" text-anchor="middle" class="m">spare ${esc(fmtVol(m.spare))}</text>`;
+  });
+  s += '</svg>';
+  viz.innerHTML = s;
+}
+
+// ---------- protocol ----------
+function renderProto(R){
+  const n = R.items.length, dil = S.diluent || 'Diluent';
+  const sum = $('summary');
+  if (!n){ sum.innerHTML = ''; $('proto').innerHTML = '<div class="empty">No targets.</div>'; return; }
+  const totalDil = R.items.reduce((a,m) => a + m.diluent, 0);
+  sum.innerHTML = `<div><span>Stock needed</span><b>${esc(fmtVol(R.stockUsed))}${R.stockV > 0 ? ` <span>of ${esc(fmtVol(R.stockV))} (${esc(fmtNum(100*R.stockUsed/R.stockV, 3))}%)</span>` : ''}</b></div>
+    <div><span>${esc(dil)} needed</span><b>${esc(fmtVol(totalDil))}</b></div>
+    <div><span>Tubes</span><b>${n}</b></div>
+    ${R.stockV > 0 ? `<div><span>Stock left</span><b>${esc(fmtVol(R.stockV - R.stockUsed))}</b></div>` : ''}`;
+  let h = `<table class="proto"><thead><tr><th>Step</th><th>Tube</th><th>Final conc.</th><th>Take</th><th>From</th><th>Add ${esc(dil)}</th><th>Total</th><th>Factor</th><th>Needed</th><th>Pass on</th></tr></thead><tbody>`;
+  R.items.forEach((m, i) => {
+    const from = m.from === 'stock' ? 'Stock' : `Tube ${m.from+1}`;
+    h += `<tr><td class="num">${i+1}</td><td>Tube ${i+1}</td><td class="num">${esc(fmtConc(m.c, m.unit))}</td><td class="num">${esc(fmtVol(m.transferIn))}</td><td>${from}</td><td class="num">${esc(fmtVol(m.diluent))}</td><td class="num">${esc(fmtVol(m.total))}</td><td class="num">1:${esc(fmtNum(m.factor))}</td><td class="num">${esc(fmtVol(m.needRaw))}</td><td class="num">${m.transferOut > 0 ? esc(fmtVol(m.transferOut)) : '–'}</td></tr>`;
+  });
+  h += '</tbody></table>';
+  $('proto').innerHTML = h;
+}
+function protoText(R){
+  const dil = S.diluent || 'Diluent';
+  const lines = [`Serial dilution – stock ${fmtConc(R.stockBase, R.stockU)}${R.stockV > 0 ? `, ${fmtVol(R.stockV)} available` : ''}`, `Mode: ${S.mode === 'serial' ? 'serial (each from previous tube)' : 'direct (each from stock)'}${R.over ? `, +${fmtNum(R.over)}% extra` : ''}`, ''];
+  R.items.forEach((m, i) => {
+    const from = m.from === 'stock' ? 'stock' : `tube ${m.from+1}`;
+    lines.push(`Tube ${i+1}: ${fmtConc(m.c, m.unit)} – take ${fmtVol(m.transferIn)} from ${from} + ${fmtVol(m.diluent)} ${dil} = ${fmtVol(m.total)} (1:${fmtNum(m.factor)})${m.transferOut > 0 ? `; pass on ${fmtVol(m.transferOut)} to tube ${i+2}` : ''}`);
+  });
+  lines.push('', `Stock needed: ${fmtVol(R.stockUsed)}; ${dil} needed: ${fmtVol(R.items.reduce((a,m) => a + m.diluent, 0))}`);
+  return lines.join('\n');
+}
+
+// ---------- messages ----------
+const ICON_W = '<svg class="i" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>';
+function renderMsgs(R){
+  const p = $('msgPanel'), m = $('msgs');
+  const all = R.errors.map(t => ['err', t]).concat(R.warns.map(t => ['', t]));
+  p.style.display = all.length ? '' : 'none';
+  m.innerHTML = all.map(([k,t]) => `<div class="msg ${k}">${ICON_W}<div>${esc(t)}</div></div>`).join('');
+}
+
+// ---------- main update ----------
+let lastR;
+function update(){
+  decSep = S.decSep; volOut = S.volOut;
+  const R = lastR = compute();
+  $('stockC').classList.toggle('bad', !(parseNum(S.stock.c) > 0));
+  $('stockV').classList.toggle('bad', S.stock.v.trim() !== '' && !(parseNum(S.stock.v) > 0));
+  const sc = parseNum(S.stock.c);
+  $('stockHint').textContent = sc > 0 ? `= ${fmtConc(toBase(sc, S.stock.u), S.stock.u)}${familyOf(S.stock.u) === 'cells' ? ` (${fmtNum(sc, 3, Infinity)} ${S.stock.u})` : ''}` : '';
+  $('rows').querySelectorAll('tr').forEach((tr, i) => tr.querySelectorAll('input').forEach(el => el.classList.toggle('bad', R.rowBad.has(i))));
+  $('schemeHint').textContent = S.mode === 'serial' ? 'highest → lowest, each tube feeds the next' : 'every tube made directly from stock';
+  renderMsgs(R); renderViz(R); renderProto(R);
+}
+
+// ---------- wiring ----------
+function bind(id, get, set){
+  const el = $(id); el.value = get();
+  el.addEventListener('input', () => { set(el.value); save(); update(); });
+}
+fillUnits($('stockU'), null, S.stock.u);
+fillUnits($('genU'), null, S.gen.u || S.stock.u);
+bind('stockC', () => S.stock.c, v => S.stock.c = v);
+bind('stockV', () => S.stock.v, v => S.stock.v = v);
+bind('stockVU', () => S.stock.vu, v => S.stock.vu = v);
+$('stockU').addEventListener('change', () => {
+  const old = familyOf(S.stock.u); S.stock.u = $('stockU').value;
+  if (familyOf(S.stock.u) !== old){ S.rows.forEach(r => r.u = S.stock.u); S.gen.u = S.stock.u; fillUnits($('genU'), null, S.gen.u); renderRows(); }
+  save(); update();
+});
+bind('overage', () => S.overage, v => S.overage = v);
+bind('minPip', () => S.minPip, v => S.minPip = v);
+bind('diluent', () => S.diluent, v => S.diluent = v);
+bind('volOut', () => S.volOut, v => S.volOut = v);
+bind('decSep', () => S.decSep, v => S.decSep = v);
+bind('genStart', () => S.gen.start, v => S.gen.start = v);
+bind('genFactor', () => S.gen.factor, v => S.gen.factor = v);
+bind('genSteps', () => S.gen.steps, v => S.gen.steps = v);
+bind('genVol', () => S.gen.v, v => S.gen.v = v);
+bind('genVU', () => S.gen.vu, v => S.gen.vu = v);
+$('genU').addEventListener('change', () => { S.gen.u = $('genU').value; save(); });
+function seg(id, key){
+  const el = $(id);
+  const paint = () => el.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === S[key]));
+  el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { S[key] = b.dataset.v; save(); paint(); update(); }));
+  paint();
+}
+seg('modeSeg', 'mode'); seg('shapeSeg', 'shape');
+$('addRow').addEventListener('click', addRow);
+$('clearRows').addEventListener('click', () => { S.rows = []; save(); renderRows(); update(); });
+function generate(replace){
+  const start = parseNum(S.gen.start), f = parseNum(S.gen.factor), steps = Math.round(parseNum(S.gen.steps)), v = parseNum(S.gen.v);
+  if (!(start > 0) || !(f > 1) || !(steps >= 1) || !(v > 0)){ alert('Please fill start concentration, a factor > 1, number of steps and a volume.'); return; }
+  if (steps > 48){ alert('Maximum 48 steps.'); return; }
+  const u = familyOf(S.gen.u) === familyOf(S.stock.u) ? S.gen.u : S.stock.u;
+  const rows = [];
+  for (let i = 0; i < steps; i++){
+    const c = start / Math.pow(f, i);
+    let txt;
+    if (familyOf(u) === 'cells' && c >= 1e4){ const e = Math.floor(Math.log10(c)); txt = dec(strip((+(c/10**e).toPrecision(6)).toString())) + 'x10^' + e; }
+    else txt = dec(strip((+c.toPrecision(6)).toString()).replace(/e\+?(-?\d+)/i, 'e$1'));
+    rows.push({c: txt, u, v: S.gen.v, vu: S.gen.vu});
+  }
+  S.rows = replace ? rows : S.rows.concat(rows);
+  save(); renderRows(); update();
+}
+$('genReplace').addEventListener('click', () => generate(true));
+$('genAppend').addEventListener('click', () => generate(false));
+$('copyBtn').addEventListener('click', async () => {
+  if (!lastR) return;
+  const t = protoText(lastR);
+  try { await navigator.clipboard.writeText(t); } catch(e){ const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+  const b = $('copyBtn'), old = b.innerHTML; b.textContent = 'Copied'; setTimeout(() => b.innerHTML = old, 1200);
+});
+renderRows(); update();
+})();
+</script>
+</body>
+</html>

@@ -8,7 +8,9 @@
 :root{--text:#18181b;--muted:#71717a;--line:#e4e4e7;--bg:#f7f7f6;--panel:#ffffff;--dark:#27272a;--soft:#f4f4f5;--warn:#b45309;--warnbg:#fffbeb;--warnline:#fcd34d;--err:#b91c1c;--errbg:#fef2f2;--errline:#fca5a5}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.45}
-header{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:18px 24px 0;max-width:1200px;margin:0 auto}
+.head-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.rh{font-size:11px;color:var(--muted);padding:2px 2px 0;white-space:nowrap}
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 24px 0;max-width:1200px;margin:0 auto}
 h1{font-size:18px;font-weight:600;margin:0;letter-spacing:-.01em}
 h2{font-size:13px;font-weight:600;margin:0 0 12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
 main{max-width:1240px;margin:0 auto;padding:16px 24px 48px;display:grid;grid-template-columns:430px 1fr;gap:16px;align-items:start}
@@ -77,12 +79,18 @@ footer{max-width:1200px;margin:0 auto;padding:0 24px 24px;color:var(--muted);fon
 <body>
 <header>
   <h1>Serial Dilution Calculator</h1>
-  <div class="hint">Accepts decimal comma and cell notation like <code>1,5x10^6</code></div>
+  <div class="head-actions">
+    <span class="hint">Accepts decimal comma and cell notation like <code>1,5x10^6</code></span>
+    <button id="importBtn" title="Load a saved series"><svg class="i" viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>Import</button>
+    <button id="exportBtn" title="Save this series as a file"><svg class="i" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>Export</button>
+    <input type="file" id="importFile" accept=".json,.txt,application/json,text/plain" hidden>
+  </div>
 </header>
 <main>
   <div class="col inputs">
     <section class="panel">
       <h2>Stock</h2>
+      <div style="margin-bottom:10px"><label>Series name (used for export)</label><input type="text" id="seriesName" placeholder="e.g. IL-6 standard curve"></div>
       <div class="grid2">
         <div>
           <label>Concentration</label>
@@ -99,9 +107,10 @@ footer{max-width:1200px;margin:0 auto;padding:0 24px 24px;color:var(--muted);fon
     <section class="panel">
       <h2>Targets</h2>
       <table class="targets">
-        <thead><tr><th></th><th>Concentration</th><th class="u"></th><th>Volume needed</th><th class="vu"></th><th></th></tr></thead>
+        <thead><tr><th></th><th>Conc. or dilution</th><th class="u"></th><th>Volume needed</th><th class="vu"></th><th></th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
+      <div class="hint">Enter a concentration (e.g. <code>100</code>, <code>1,5x10^6</code>) or a dilution of the row above (e.g. <code>1:10</code>; row 1 is relative to the stock). 1:10 = 1 part + 9 parts diluent.</div>
       <div class="row-actions">
         <button id="addRow"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add target</button>
         <button id="clearRows">Clear</button>
@@ -187,6 +196,12 @@ function parseNum(s){
   const exp = m[2] != null ? +m[2] : m[3] != null ? +m[3] : 0;
   return mant * Math.pow(10, exp);
 }
+function parseDil(s){
+  const m = String(s ?? '').trim().replace(/\s+/g,'').match(/^(\d+(?:[.,]\d+)?)[:\/](\d+(?:[.,]\d+)?)$/);
+  if (!m) return null;
+  const a = parseFloat(m[1].replace(',', '.')), b = parseFloat(m[2].replace(',', '.'));
+  return a > 0 && b > 0 ? b / a : NaN;
+}
 let decSep = '.';
 const dec = s => decSep === ',' ? s.replace('.', ',') : s;
 const sup = n => String(n).split('').map(c => c === '-' ? '⁻' : SUP[+c]).join('');
@@ -219,6 +234,7 @@ function fmtVol(uL){
 
 // ---------- state ----------
 const DEFAULT = {
+  name:'',
   stock:{c:'10', u:'mg/mL', v:'100', vu:'µL'},
   rows:[{c:'1000',u:'µg/mL',v:'200',vu:'µL'},{c:'100',u:'µg/mL',v:'200',vu:'µL'},{c:'10',u:'µg/mL',v:'200',vu:'µL'},{c:'1',u:'µg/mL',v:'200',vu:'µL'}],
   mode:'serial', shape:'tube', reserveOn:true, reservePct:'10', minPip:'1', diluent:'Diluent', volOut:'auto', decSep:'.',
@@ -250,7 +266,7 @@ function renderRows(){
   S.rows.forEach((r, i) => {
     if (familyOf(r.u) !== fam) r.u = S.stock.u;
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${i+1}</td><td><input type="text" inputmode="decimal" data-k="c" value="${esc(r.c)}"></td><td class="u"><select data-k="u"></select></td><td><input type="text" inputmode="decimal" data-k="v" value="${esc(r.v)}"></td><td class="vu"><select data-k="vu"><option>µL</option><option>mL</option></select></td><td><button class="icon" title="Remove" data-rm>${SVG_X}</button></td>`;
+    tr.innerHTML = `<td>${i+1}</td><td><input type="text" data-k="c" placeholder="conc. or 1:10" value="${esc(r.c)}"><div class="rh" data-rh></div></td><td class="u"><select data-k="u"></select></td><td><input type="text" inputmode="decimal" data-k="v" value="${esc(r.v)}"></td><td class="vu"><select data-k="vu"><option>µL</option><option>mL</option></select></td><td><button class="icon" title="Remove" data-rm>${SVG_X}</button></td>`;
     fillUnits(tr.querySelector('[data-k=u]'), fam, r.u);
     tr.querySelector('[data-k=vu]').value = r.vu;
     tr.querySelectorAll('input,select').forEach(el => el.addEventListener('input', () => { r[el.dataset.k] = el.value; save(); update(); }));
@@ -280,11 +296,23 @@ function compute(){
   const stockBase = toBase(stockC, stockU);
 
   let items = [];
+  const rowConc = {};
+  let prevBase = stockC > 0 ? stockBase : NaN;
   S.rows.forEach((r, i) => {
-    const c = parseNum(r.c), v = parseNum(r.v);
     if (r.c.trim() === '' && r.v.trim() === '') return;
-    if (!(c > 0) || !(v > 0)) { rowBad.add(i); return; }
-    const base = toBase(c, r.u);
+    const dil = parseDil(r.c), v = parseNum(r.v);
+    let base;
+    if (dil !== null){
+      if (!(dil >= 1)) { rowBad.add(i); prevBase = NaN; rowConc[i] = {err:'dilution must be 1:1 or more'}; return; }
+      base = prevBase / dil;
+      if (!(base > 0)) { rowBad.add(i); prevBase = NaN; rowConc[i] = {err:'row above is invalid'}; return; }
+      rowConc[i] = {base, unit:r.u, dil};
+    } else {
+      const c = parseNum(r.c);
+      base = c > 0 ? toBase(c, r.u) : NaN;
+    }
+    prevBase = base;
+    if (!(base > 0) || !(v > 0)) { rowBad.add(i); return; }
     if (stockC > 0 && base > stockBase * (1 + 1e-12)) { rowBad.add(i); errors.push(`Target ${i+1} (${fmtConc(base, r.u)}) is more concentrated than the stock.`); return; }
     items.push({idx:i, c:base, unit:r.u, needRaw:v*VOL[r.vu], volUnit:r.vu});
   });
@@ -326,7 +354,7 @@ function compute(){
     const bigFactor = merged.some(m => m.factor > 1000);
     if (bigFactor) warns.push('A single step dilutes more than 1:1000 – consider an intermediate step for accuracy.');
   }
-  return {errors, warns, rowBad, items:merged, stockBase, stockU, stockV, stockUsed, over};
+  return {errors, warns, rowBad, rowConc, items:merged, stockBase, stockU, stockV, stockUsed, over};
 }
 
 // ---------- visual ----------
@@ -428,7 +456,7 @@ function renderProto(R){
 }
 function protoText(R){
   const dil = S.diluent || 'Diluent';
-  const lines = [`Serial dilution – stock ${fmtConc(R.stockBase, R.stockU)}${R.stockV > 0 ? `, ${fmtVol(R.stockV)} available` : ''}`, `Mode: ${S.mode === 'serial' ? 'serial (each from previous tube)' : 'direct (each from stock)'}${R.over ? `, +${fmtNum(R.over)}% pipetting reserve per tube` : ''}`, ''];
+  const lines = [...(S.name ? [S.name] : []), `Serial dilution – stock ${fmtConc(R.stockBase, R.stockU)}${R.stockV > 0 ? `, ${fmtVol(R.stockV)} available` : ''}`, `Mode: ${S.mode === 'serial' ? 'serial (each from previous tube)' : 'direct (each from stock)'}${R.over ? `, +${fmtNum(R.over)}% pipetting reserve per tube` : ''}`, ''];
   R.items.forEach((m, i) => {
     const from = m.from === 'stock' ? 'stock' : `tube ${m.from+1}`;
     lines.push(`Tube ${i+1}: ${fmtConc(m.c, m.unit)} – take ${fmtVol(m.transferIn)} from ${from} + ${fmtVol(m.diluent)} ${dil} = ${fmtVol(m.total)} (1:${fmtNum(m.factor)})${m.transferOut > 0 ? `; pass on ${fmtVol(m.transferOut)} to tube ${i+2}` : ''}`);
@@ -455,7 +483,12 @@ function update(){
   $('stockV').classList.toggle('bad', S.stock.v.trim() !== '' && !(parseNum(S.stock.v) > 0));
   const sc = parseNum(S.stock.c);
   $('stockHint').textContent = sc > 0 ? `= ${fmtConc(toBase(sc, S.stock.u), S.stock.u)}${familyOf(S.stock.u) === 'cells' ? ` (${fmtNum(sc, 3, Infinity)} ${S.stock.u})` : ''}` : '';
-  $('rows').querySelectorAll('tr').forEach((tr, i) => tr.querySelectorAll('input').forEach(el => el.classList.toggle('bad', R.rowBad.has(i))));
+  $('rows').querySelectorAll('tr').forEach((tr, i) => {
+    tr.querySelectorAll('input').forEach(el => el.classList.toggle('bad', R.rowBad.has(i)));
+    const rc = R.rowConc[i], rh = tr.querySelector('[data-rh]');
+    rh.textContent = !rc ? '' : rc.err ? rc.err : `= ${fmtConc(rc.base, rc.unit)}`;
+    rh.style.display = rc ? '' : 'none';
+  });
   $('schemeHint').textContent = (S.mode === 'serial' ? 'highest → lowest, each tube feeds the next' : 'every tube made directly from stock') + (R.over ? ` · +${fmtNum(R.over)}% reserve per tube` : '');
   renderMsgs(R); renderViz(R); renderProto(R);
 }
@@ -522,6 +555,33 @@ $('copyBtn').addEventListener('click', async () => {
   try { await navigator.clipboard.writeText(t); } catch(e){ const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
   const b = $('copyBtn'), old = b.innerHTML; b.textContent = 'Copied'; setTimeout(() => b.innerHTML = old, 1200);
 });
+const KEYS = ['name','stock','rows','mode','shape','reserveOn','reservePct','minPip','diluent','volOut','decSep','gen'];
+$('exportBtn').addEventListener('click', () => {
+  const state = {}; KEYS.forEach(k => state[k] = S[k]);
+  const data = {app:'SerialDilution', version:1, savedAt:new Date().toISOString(), state};
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const d = new Date(), ymd = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  const base = (S.name || 'serial-dilution').trim().replace(/[^\w\-. ]+/g, '').replace(/\s+/g, '_') || 'serial-dilution';
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${base}_${ymd}.json`;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+$('importBtn').addEventListener('click', () => $('importFile').click());
+$('importFile').addEventListener('change', async e => {
+  const file = e.target.files[0]; e.target.value = '';
+  if (!file) return;
+  try {
+    const data = JSON.parse(await file.text());
+    const st = data && data.state;
+    if (!st || typeof st.stock !== 'object' || !Array.isArray(st.rows)) throw new Error('not a Serial Dilution file');
+    const next = {...DEFAULT};
+    KEYS.forEach(k => { if (k in st) next[k] = st[k]; });
+    next.stock = {...DEFAULT.stock, ...st.stock};
+    next.rows = st.rows.map(r => ({c:String(r.c ?? ''), u:r.u || next.stock.u, v:String(r.v ?? ''), vu:r.vu === 'mL' ? 'mL' : 'µL'}));
+    localStorage.setItem('sdc.state', JSON.stringify(next));
+    location.reload();
+  } catch(err){ alert('Could not import this file: ' + err.message); }
+});
+bind('seriesName', () => S.name || '', v => S.name = v);
 renderRows(); update();
 })();
 </script>

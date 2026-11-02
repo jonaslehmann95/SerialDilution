@@ -1,4 +1,4 @@
-# Serial Dilution Calculator
+# JL Serial Dilution Calculator
 
 Single-file browser calculator for serial dilutions of cells, proteins, drugs or any stock.
 
